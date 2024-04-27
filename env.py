@@ -1,3 +1,4 @@
+# env.py
 import gym
 from gym import spaces
 from matplotlib import pyplot as plt
@@ -29,8 +30,17 @@ class DungeonEnv(gym.Env):
 
     def reset(self):
         self.state = generate_dungeon(self.rows, self.cols)
-        self.player_position = (0, 0)  # Reset player position to top-left corner
+        # Find a free spot for the player to start
+        free_positions = np.argwhere(self.state == 0)  # Assuming 0 is a free space
+        if free_positions.size > 0:
+            start_pos = free_positions[0]  # Take the first free spot or choose randomly
+            self.player_position = (start_pos[0], start_pos[1])
         return np.array(self.state)
+
+    def state_to_index(self, state):
+        """Convert the state to an index for the Q-table, assuming state is player's position."""
+        x, y = state
+        return x * (self.cols * self.room_size) + y
 
     def step(self, action):
         x, y = self.player_position
@@ -57,20 +67,16 @@ class DungeonEnv(gym.Env):
         info = {}
         return np.array(self.state), reward, done, info
 
-    def render(self, mode="human"):
-        if mode == "human":
+    def render(self, mode="human", episode=None, render_every=100):
+        if mode == "human" and (episode is None or episode % render_every == 0):
             dungeon_array = np.array(self.state)
-            # Set the player's position temporarily to a unique identifier not used elsewhere
             player_val = 4
             original_value = dungeon_array[self.player_position[0]][
                 self.player_position[1]
-            ]  # Save the original value at the player's position
+            ]
             dungeon_array[self.player_position[0]][self.player_position[1]] = player_val
 
-            # Create a colormap and normalization that includes all values
-            # Colormap: 0 -> white (free space), 1 -> black (wall), 2 -> grey (unused), 3 -> red (monster), 4 -> blue (player)
             cmap = colors.ListedColormap(["white", "black", "grey", "red", "blue"])
-            # Normalization: Adjust bounds to include all values
             norm = colors.BoundaryNorm([0, 1, 2, 3, 4, 5], cmap.N)
 
             fig, ax = plt.subplots(figsize=(10, 8))
@@ -78,9 +84,10 @@ class DungeonEnv(gym.Env):
             plt.colorbar(im, ax=ax, ticks=[0, 1, 2, 3, 4], orientation="vertical")
             ax.axis("off")
             ax.set_title("Dungeon Map with Player Position")
-            plt.show()
+            plt.show(block=False)
+            plt.pause(0.1)  # Pause to update the plot
+            plt.close(fig)  # Close the plot automatically
 
-            # Restore the original value at the player's position after rendering
             dungeon_array[self.player_position[0]][
                 self.player_position[1]
             ] = original_value
