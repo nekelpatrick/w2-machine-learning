@@ -5,7 +5,12 @@ import random
 
 
 def generate_room(
-    size, open_top=False, open_bottom=False, open_left=False, open_right=False
+    size,
+    open_top=False,
+    open_bottom=False,
+    open_left=False,
+    open_right=False,
+    cleared_rooms=None,
 ):
     room = [
         [
@@ -33,19 +38,22 @@ def generate_room(
         room[mid_point][size - 1] = 0
 
     # Randomly decide whether to place monsters in this room
-    if random.random() < 0.30:  # 30% chance to have monsters
-        monsters_placed = 0
-        while monsters_placed < 3:
-            x = random.randint(1, size - 2)
-            y = random.randint(1, size - 2)
-            if room[x][y] == 0:
-                room[x][y] = 3
-                monsters_placed += 1
+    if (
+        cleared_rooms is not None and id(room) not in cleared_rooms
+    ):  # Check if the room is cleared
+        if random.random() < 0.30:  # 30% chance to have monsters
+            monsters_placed = 0
+            while monsters_placed < 3:
+                x = random.randint(1, size - 2)
+                y = random.randint(1, size - 2)
+                if room[x][y] == 0:
+                    room[x][y] = 3
+                    monsters_placed += 1
 
     return room
 
 
-def generate_dungeon(rows, cols):
+def generate_dungeon(rows, cols, cleared_rooms):
     dungeon = []
     for row in range(rows):
         row_of_rooms = []
@@ -55,7 +63,9 @@ def generate_dungeon(rows, cols):
             open_bottom = row < rows - 1
             open_left = col > 0
             open_right = col < cols - 1
-            room = generate_room(10, open_top, open_bottom, open_left, open_right)
+            room = generate_room(
+                10, open_top, open_bottom, open_left, open_right, cleared_rooms
+            )
             row_of_rooms.append(room)
 
         # Combine rooms into dungeon
