@@ -70,27 +70,3 @@ def generate_dungeon(rows, cols):
         dungeon[-1][j] = 1  # Set the entire bottom row to wall
 
     return dungeon
-
-
-# # Generate the dungeon with 5 rows and 7 columns of rooms
-# dungeon = generate_dungeon(5, 7)
-
-# # Convert dungeon data to a NumPy array for easier manipulation with matplotlib
-# dungeon_array = np.array(dungeon)
-
-# # Define a color map: 0 -> white (free space), 1 -> black (wall), 3 -> red (monster)
-# cmap = plt.cm.colors.ListedColormap(["white", "black", "red"])
-# bounds = [0, 0.9, 1.9, 3.1]  # Boundaries for colors
-# norm = plt.cm.colors.BoundaryNorm(bounds, cmap.N)
-
-# # Create an Axes instance
-# fig, ax = plt.subplots(figsize=(12, 10))
-# im = ax.imshow(dungeon_array, cmap=cmap, norm=norm)
-
-# # Create a color bar
-# plt.colorbar(im, ax=ax, ticks=[0, 1, 3], orientation="vertical")
-
-# # Set the plot title and remove axis ticks
-# ax.set_title("Dungeon Map")
-# ax.axis("off")  # Turn off axis numbers and ticks
-# plt.show()
