@@ -42,7 +42,7 @@ def generate_room(
     if (
         cleared_rooms is not None and id(room) not in cleared_rooms
     ):  # Check if the room is cleared
-        if random.random() < 0.30:  # 30% chance to have monsters
+        if random.random() < 0.90:  # 30% chance to have monsters
             monsters_placed = 0
             while monsters_placed < 3:
                 x = random.randint(1, size - 2)
@@ -56,6 +56,7 @@ def generate_room(
 
 def generate_dungeon(rows, cols, cleared_rooms):
     dungeon = []
+    total_monsters = 0  # Initialize monster counter
     for row in range(rows):
         row_of_rooms = []
         for col in range(cols):
@@ -65,12 +66,15 @@ def generate_dungeon(rows, cols, cleared_rooms):
             open_left = col > 0
             open_right = col < cols - 1
             room = generate_room(
-                10, open_top, open_bottom, open_left, open_right, cleared_rooms
+                6, open_top, open_bottom, open_left, open_right, cleared_rooms
             )
             row_of_rooms.append(room)
+            # Count monsters in each room
+            for line in room:
+                total_monsters += line.count(3)  # Count monsters in this line
 
         # Combine rooms into dungeon
-        for i in range(10):  # Adjusted to match room size
+        for i in range(6):  # Adjusted to match room size
             dungeon_row = []
             for room in row_of_rooms:
                 dungeon_row.extend(room[i])
@@ -80,4 +84,4 @@ def generate_dungeon(rows, cols, cleared_rooms):
     for j in range(len(dungeon[-1])):
         dungeon[-1][j] = 1  # Set the entire bottom row to wall
 
-    return dungeon
+    return dungeon, total_monsters  # Return the dungeon grid and total monster count

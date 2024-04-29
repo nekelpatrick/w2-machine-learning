@@ -19,7 +19,7 @@ plt.xlabel("Step")
 class DungeonEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, rows=2, cols=4, room_size=8, update_callback=None):
+    def __init__(self, rows=2, cols=3, room_size=6, update_callback=None):
         super(DungeonEnv, self).__init__()
         self.rows = rows
         self.cols = cols
@@ -35,10 +35,13 @@ class DungeonEnv(gym.Env):
         self.reset()
         self.step_count = 0
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        self.total_monsters = 0  # Track total number of monsters
 
     def reset(self):
         self.cleared_rooms = set()
-        self.state = generate_dungeon(self.rows, self.cols, self.cleared_rooms)
+        # Adjust generate_dungeon to return total monsters
+        self.state, self.total_monsters = generate_dungeon(
+            self.rows, self.cols, self.cleared_rooms)
         free_positions = np.argwhere(self.state == 0)
         if free_positions.size > 0:
             start_pos = free_positions[0]
@@ -73,13 +76,16 @@ class DungeonEnv(gym.Env):
         if self.update_callback:
             self.update_callback(self.step_count, self.cumulative_reward)
         # Check what is at the new position
-        if self.state[new_x][new_y] == 1:  # Wall
-            reward = -10
-        elif self.state[new_x][new_y] == 3:  # Monster
-            reward = 10
+        # Monster interaction logic
+        if self.state[new_x][new_y] == 3:  # Monster
+            reward = 100
             self.state[new_x][new_y] = 0  # Remove the monster
+            self.total_monsters -= 1
+            if self.total_monsters == 0:  # All monsters defeated
+                reward += 500  # Large bonus for defeating all monsters
         else:
-            reward = -1
+            # Normal or wall penalty
+            reward = -1 if self.state[new_x][new_y] == 0 else -100
 
         self.player_position = (new_x, new_y)
         self.cumulative_reward += reward
@@ -94,9 +100,11 @@ class DungeonEnv(gym.Env):
 
         return np.array(self.state), reward, done, {}
 
-    def render(self, mode='human'):
-        self.ax.clear()  # Clear the previous plot
+    def render(self, mode='human', render_every=10):
+        if self.step_count % render_every != 0:
+            return
 
+        self.ax.clear()  # Clear the previous plot
         dungeon_array = np.array(self.state)
         player_val = 4
         original_value = dungeon_array[self.player_position[0]
@@ -108,8 +116,6 @@ class DungeonEnv(gym.Env):
         norm = colors.BoundaryNorm([0, 1, 2, 3, 4, 5], cmap.N)
 
         im = self.ax.imshow(dungeon_array, cmap=cmap, norm=norm)
-
-        # Check if colorbar has been created, update it if yes, or create it if no
         if hasattr(self, 'colorbar'):
             self.colorbar.update_normal(im)
         else:
@@ -123,7 +129,6 @@ class DungeonEnv(gym.Env):
         self.fig.canvas.draw()
         plt.pause(0.1)
 
-        # Restore original dungeon array value at the player's position
         dungeon_array[self.player_position[0]
                       ][self.player_position[1]] = original_value
 

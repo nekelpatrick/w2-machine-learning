@@ -14,26 +14,24 @@ env = DungeonEnv(update_callback=update_data)
 n_states = env.rows * env.room_size * env.cols * env.room_size
 agent = QLearningAgent(n_states=n_states, n_actions=env.action_space.n)
 
-episodes = 1000  # Number of episodes to train
+episodes = 2  # Number of episodes to train
 reward_list = []  # To store total reward per episode
 
+render_frequency = 50  # Adjust the frequency as needed
 for episode in range(episodes):
     total_reward = 0
     state = env.reset()
-    state_index = env.state_to_index(
-        env.player_position)  # Use method from environment
+    state_index = env.state_to_index(env.player_position)
     done = False
 
     while not done:
         action = agent.choose_action(state_index)
         next_state, reward, done, info = env.step(action)
-        next_state_index = env.state_to_index(
-            env.player_position
-        )  # Use method from environment
+        next_state_index = env.state_to_index(env.player_position)
         agent.update_q_table(state_index, action, reward, next_state_index)
         state_index = next_state_index
         total_reward += reward
-        env.render()
+        env.render(render_every=render_frequency)  # Only render every 50 steps
         env.update_realtime_graph(plt.step, total_reward)
 
     reward_list.append(total_reward)
