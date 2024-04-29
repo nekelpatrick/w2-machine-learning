@@ -1,10 +1,9 @@
 # env.py
 import gym
 from gym import spaces
-from matplotlib import pyplot as plt
-from matplotlib import colors
+from matplotlib import colors, pyplot as plt
 import numpy as np
-
+from app import X, Y
 from dungeonGenerator import generate_dungeon
 
 # Assuming generate_dungeon is already defined and imported correctly
@@ -17,31 +16,25 @@ plt.ylabel("Cumulative Reward")
 plt.xlabel("Step")
 
 
-def update_plot(step, cum_reward):
-    line.set_xdata(np.append(line.get_xdata(), step))
-    line.set_ydata(np.append(line.get_ydata(), cum_reward))
-    ax.relim()
-    ax.autoscale_view()
-    plt.draw()
-    plt.pause(0.01)
-
-
 class DungeonEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, rows=5, cols=7, room_size=10):
+    def __init__(self, rows=2, cols=4, room_size=8, update_callback=None):
         super(DungeonEnv, self).__init__()
         self.rows = rows
         self.cols = cols
         self.room_size = room_size
-        self.action_space = spaces.Discrete(4)  # 0=up, 1=down, 2=left, 3=right
-        self.observation_space = spaces.Box(
-            low=0, high=3, shape=(rows * room_size, cols * room_size), dtype=int
-        )
+        self.action_space = spaces.Discrete(4)
+        self.observation_space = spaces.Box(low=0, high=3, shape=(
+            rows * room_size, cols * room_size), dtype=int)
         self.state = None
         self.player_position = (0, 0)
-        self.cumulative_reward = 0  # Initialize cumulative reward
+        self.cumulative_reward = 0
+        # Ensure update_callback is defined here
+        self.update_callback = update_callback
         self.reset()
+        self.step_count = 0
+        self.fig, self.ax = plt.subplots(figsize=(10, 8))
 
     def reset(self):
         self.cleared_rooms = set()
@@ -76,6 +69,9 @@ class DungeonEnv(gym.Env):
         else:
             new_x, new_y = old_x, old_y  # No movement if action is not possible
 
+        self.step_count += 1  # Increment step_count every time step is called
+        if self.update_callback:
+            self.update_callback(self.step_count, self.cumulative_reward)
         # Check what is at the new position
         if self.state[new_x][new_y] == 1:  # Wall
             reward = -10
@@ -89,7 +85,8 @@ class DungeonEnv(gym.Env):
         self.cumulative_reward += reward
         done = len(self.cleared_rooms) == self.rows * self.cols
 
-        # Log the action and result
+        if self.update_callback:
+            self.update_callback(self.player_position, self.cumulative_reward)
 
         print(
             f"Action: {['Up', 'Down', 'Left', 'Right'][action]}, Position: {self.player_position}, Reward: {reward}, Cumulative Reward: {self.cumulative_reward}"
@@ -97,39 +94,43 @@ class DungeonEnv(gym.Env):
 
         return np.array(self.state), reward, done, {}
 
-    def render(self, mode="human", episode=None, render_every=100):
-        if mode == "human" and (episode is None or episode % render_every == 0):
-            dungeon_array = np.array(self.state)
-            player_val = 4
-            original_value = dungeon_array[self.player_position[0]][
-                self.player_position[1]
-            ]
-            dungeon_array[self.player_position[0]][self.player_position[1]] = player_val
+    def render(self, mode='human'):
+        self.ax.clear()  # Clear the previous plot
 
-            cmap = colors.ListedColormap(["white", "black", "grey", "red", "blue"])
-            norm = colors.BoundaryNorm([0, 1, 2, 3, 4, 5], cmap.N)
+        dungeon_array = np.array(self.state)
+        player_val = 4
+        original_value = dungeon_array[self.player_position[0]
+                                       ][self.player_position[1]]
+        dungeon_array[self.player_position[0]
+                      ][self.player_position[1]] = player_val
 
-            fig, ax = plt.subplots(figsize=(10, 8))
-            im = ax.imshow(dungeon_array, cmap=cmap, norm=norm)
-            plt.colorbar(im, ax=ax, ticks=[0, 1, 2, 3, 4], orientation="vertical")
-            ax.axis("off")
-            ax.set_title("Dungeon Map with Player Position")
-            plt.figtext(
-                0.5,
-                0.01,
-                f"Cumulative Reward: {self.cumulative_reward}",
-                ha="center",
-                fontsize=12,
-                bbox={"facecolor": "orange", "alpha": 0.5, "pad": 5},
-            )
-            plt.show(block=False)
-            plt.pause(0.1)
-            plt.close(fig)
-            print("Rendered the dungeon.")
+        cmap = colors.ListedColormap(['white', 'black', 'grey', 'red', 'blue'])
+        norm = colors.BoundaryNorm([0, 1, 2, 3, 4, 5], cmap.N)
 
-            dungeon_array[self.player_position[0]][
-                self.player_position[1]
-            ] = original_value
+        im = self.ax.imshow(dungeon_array, cmap=cmap, norm=norm)
+
+        # Check if colorbar has been created, update it if yes, or create it if no
+        if hasattr(self, 'colorbar'):
+            self.colorbar.update_normal(im)
+        else:
+            self.colorbar = self.fig.colorbar(
+                im, ax=self.ax, ticks=[0, 1, 2, 3, 4], orientation='vertical')
+
+        self.ax.axis('off')
+        self.ax.set_title('Dungeon Map with Player Position')
+        plt.figtext(0.5, 0.01, f'Cumulative Reward: {self.cumulative_reward}', ha='center', fontsize=12,
+                    bbox={'facecolor': 'orange', 'alpha': 0.5, 'pad': 5})
+        self.fig.canvas.draw()
+        plt.pause(0.1)
+
+        # Restore original dungeon array value at the player's position
+        dungeon_array[self.player_position[0]
+                      ][self.player_position[1]] = original_value
+
+    def update_realtime_graph(self, step, reward):
+        """ Method to send data to Dash/Plotly """
+        X.append(step)
+        Y.append(reward)
 
     def close(self):
         plt.close()

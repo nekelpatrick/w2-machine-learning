@@ -1,9 +1,16 @@
 # main.py
+from app import X, Y
 from env import DungeonEnv
 from q_learning import QLearningAgent
 import matplotlib.pyplot as plt
 
-env = DungeonEnv()
+
+def update_data(step, reward):
+    X.append(step)
+    Y.append(reward)
+
+
+env = DungeonEnv(update_callback=update_data)
 n_states = env.rows * env.room_size * env.cols * env.room_size
 agent = QLearningAgent(n_states=n_states, n_actions=env.action_space.n)
 
@@ -13,7 +20,8 @@ reward_list = []  # To store total reward per episode
 for episode in range(episodes):
     total_reward = 0
     state = env.reset()
-    state_index = env.state_to_index(env.player_position)  # Use method from environment
+    state_index = env.state_to_index(
+        env.player_position)  # Use method from environment
     done = False
 
     while not done:
@@ -26,6 +34,7 @@ for episode in range(episodes):
         state_index = next_state_index
         total_reward += reward
         env.render()
+        env.update_realtime_graph(plt.step, total_reward)
 
     reward_list.append(total_reward)
     print(
@@ -43,6 +52,7 @@ for episode in range(episodes):
         plt.xlabel("Episode")
         plt.ylabel("Total Reward")
         plt.title("Reward Progress Over Time")
-        plt.show()
+        # Use `block=False` to avoid blocking the execution
+        plt.show(block=False)
 
 env.close()
